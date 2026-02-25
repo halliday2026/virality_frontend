@@ -1,0 +1,59 @@
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const registerSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+const sourceSchema = z.object({
+  platform: z.enum(["reddit", "youtube", "tiktok", "instagram"]),
+  apify_actor_id: z.string().min(1, "Actor ID is required"),
+  actor_input: z.string().refine(
+    (val) => {
+      try {
+        JSON.parse(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Must be valid JSON" }
+  ),
+});
+
+export const analyzeSchema = z.object({
+  sources: z.array(sourceSchema).min(1, "At least one source is required"),
+  time_window: z.enum(["day", "week", "month"]),
+  max_posts_per_source: z.number().int().min(1).max(500),
+});
+
+export type LoginFormData = z.infer<typeof loginSchema>;
+export type RegisterFormData = z.infer<typeof registerSchema>;
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type AnalyzeFormData = z.infer<typeof analyzeSchema>;
