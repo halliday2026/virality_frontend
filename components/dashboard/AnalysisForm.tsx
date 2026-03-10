@@ -45,9 +45,9 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
   const form = useForm<AnalyzeFormData>({
     resolver: zodResolver(analyzeSchema),
     defaultValues: {
-      platforms: ["reddit", "youtube", "tiktok", "instagram"],
+      platforms: [],
       time_window: "week",
-      max_posts_per_source: 25,
+      max_posts_per_source: 10,
     },
   });
 
@@ -101,7 +101,7 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
         {/* Platforms */}
         <div className="space-y-2">
           <FormLabel>Platforms</FormLabel>
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             {PLATFORMS.map(({ value, label }) => (
               <div key={value} className="flex items-center gap-2">
                 <input
