@@ -1,12 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 
-import { SourceEditor } from "@/components/dashboard/SourceEditor";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,19 +25,12 @@ import {
 } from "@/components/ui/select";
 import { type AnalyzeFormData, analyzeSchema } from "@/lib/validations";
 
-const DEFAULT_SOURCE = {
-  platform: "reddit" as const,
-  apify_actor_id: "trudax/reddit-scraper-lite",
-  actor_input: JSON.stringify(
-    {
-      startUrls: [{ url: "https://www.reddit.com/r/all/top/?t=week" }],
-      maxItems: 100,
-      skipComments: true,
-    },
-    null,
-    2
-  ),
-};
+const PLATFORMS = [
+  { value: "reddit", label: "Reddit" },
+  { value: "youtube", label: "YouTube" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+] as const;
 
 interface AnalysisFormProps {
   onClose: () => void;
@@ -48,40 +40,46 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchInput, setSearchInput] = useState("trending, viral");
 
   const form = useForm<AnalyzeFormData>({
     resolver: zodResolver(analyzeSchema),
     defaultValues: {
-      sources: [DEFAULT_SOURCE],
+      platforms: ["reddit", "youtube", "tiktok", "instagram"],
       time_window: "week",
-      max_posts_per_source: 100,
+      max_posts_per_source: 25,
+      searches: ["trending", "viral"],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { field: platformsField } = useController({
     control: form.control,
-    name: "sources",
+    name: "platforms",
   });
+
+  function togglePlatform(value: string) {
+    const current = platformsField.value as string[];
+    const next = current.includes(value)
+      ? current.filter((p) => p !== value)
+      : [...current, value];
+    platformsField.onChange(next);
+  }
+
+  function handleSearchChange(raw: string) {
+    setSearchInput(raw);
+    const terms = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    form.setValue("searches", terms, { shouldValidate: true });
+  }
 
   async function onSubmit(data: AnalyzeFormData) {
     setSubmitting(true);
     setError(null);
 
-    const payload = {
-      sources: data.sources.map((s) => ({
-        platform: s.platform,
-        apify_actor_id: s.apify_actor_id,
-        actor_input: JSON.parse(s.actor_input),
-      })),
-      time_window: data.time_window,
-      max_posts_per_source: data.max_posts_per_source,
-    };
-
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(data),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
@@ -96,6 +94,8 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
     }
   }
 
+  const selectedPlatforms = platformsField.value as string[];
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -105,28 +105,31 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
           </Alert>
         )}
 
-        <div className="space-y-3">
-          {fields.map((field, index) => (
-            <SourceEditor
-              key={field.id}
-              form={form}
-              index={index}
-              onRemove={() => remove(index)}
-              canRemove={fields.length > 1}
-            />
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append(DEFAULT_SOURCE)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add source
-          </Button>
+        {/* Platforms */}
+        <div className="space-y-2">
+          <FormLabel>Platforms</FormLabel>
+          <div className="flex flex-wrap gap-2">
+            {PLATFORMS.map(({ value, label }) => (
+              <Button
+                key={value}
+                type="button"
+                variant={selectedPlatforms.includes(value) ? "default" : "outline"}
+                size="sm"
+                onClick={() => togglePlatform(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          {form.formState.errors.platforms && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.platforms.message}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          {/* Time window */}
           <FormField
             control={form.control}
             name="time_window"
@@ -150,32 +153,42 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
             )}
           />
 
+          {/* Max posts per source */}
           <FormField
             control={form.control}
             name="max_posts_per_source"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Max posts / source</FormLabel>
-                <Select
-                  onValueChange={(v) => field.onChange(Number(v))}
-                  defaultValue={String(field.value)}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="200">200</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={100}
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Search terms */}
+        <div className="space-y-2">
+          <FormLabel>Search terms</FormLabel>
+          <Input
+            placeholder="trending, viral, ..."
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Comma-separated</p>
+          {form.formState.errors.searches && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.searches.message}
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

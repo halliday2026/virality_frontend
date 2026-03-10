@@ -30,26 +30,13 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
-const sourceSchema = z.object({
-  platform: z.enum(["reddit", "youtube", "tiktok", "instagram"]),
-  apify_actor_id: z.string().min(1, "Actor ID is required"),
-  actor_input: z.string().refine(
-    (val) => {
-      try {
-        JSON.parse(val);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: "Must be valid JSON" }
-  ),
-});
-
 export const analyzeSchema = z.object({
-  sources: z.array(sourceSchema).min(1, "At least one source is required"),
+  platforms: z
+    .array(z.enum(["reddit", "youtube", "tiktok", "instagram"]))
+    .min(1, "Select at least one platform"),
   time_window: z.enum(["day", "week", "month"]),
-  max_posts_per_source: z.number().int().min(1).max(500),
+  max_posts_per_source: z.number().int().min(5).max(100),
+  searches: z.array(z.string().min(1)).min(1, "At least one search term required"),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;

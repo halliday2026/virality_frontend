@@ -6,16 +6,11 @@ export type RunStatus =
   | "complete"
   | "error";
 
-export interface SourceConfig {
-  platform: string;
-  apify_actor_id: string;
-  actor_input: Record<string, unknown>;
-}
-
 export interface AnalyzeRequest {
-  sources: SourceConfig[];
-  time_window: string;
+  platforms: string[];
+  time_window: "day" | "week" | "month";
   max_posts_per_source: number;
+  searches: string[];
 }
 
 export interface AnalyzeResponse {
