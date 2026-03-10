@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -40,7 +41,6 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [searchInput, setSearchInput] = useState("trending, viral");
 
   const form = useForm<AnalyzeFormData>({
     resolver: zodResolver(analyzeSchema),
@@ -48,7 +48,6 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
       platforms: ["reddit", "youtube", "tiktok", "instagram"],
       time_window: "week",
       max_posts_per_source: 25,
-      searches: ["trending", "viral"],
     },
   });
 
@@ -63,12 +62,6 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
       ? current.filter((p) => p !== value)
       : [...current, value];
     platformsField.onChange(next);
-  }
-
-  function handleSearchChange(raw: string) {
-    setSearchInput(raw);
-    const terms = raw.split(",").map((s) => s.trim()).filter(Boolean);
-    form.setValue("searches", terms, { shouldValidate: true });
   }
 
   async function onSubmit(data: AnalyzeFormData) {
@@ -108,17 +101,20 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
         {/* Platforms */}
         <div className="space-y-2">
           <FormLabel>Platforms</FormLabel>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {PLATFORMS.map(({ value, label }) => (
-              <Button
-                key={value}
-                type="button"
-                variant={selectedPlatforms.includes(value) ? "default" : "outline"}
-                size="sm"
-                onClick={() => togglePlatform(value)}
-              >
-                {label}
-              </Button>
+              <div key={value} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`platform-${value}`}
+                  checked={selectedPlatforms.includes(value)}
+                  onChange={() => togglePlatform(value)}
+                  className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                />
+                <Label htmlFor={`platform-${value}`} className="cursor-pointer font-normal">
+                  {label}
+                </Label>
+              </div>
             ))}
           </div>
           {form.formState.errors.platforms && (
@@ -173,22 +169,6 @@ export function AnalysisForm({ onClose }: AnalysisFormProps) {
               </FormItem>
             )}
           />
-        </div>
-
-        {/* Search terms */}
-        <div className="space-y-2">
-          <FormLabel>Search terms</FormLabel>
-          <Input
-            placeholder="trending, viral, ..."
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Comma-separated</p>
-          {form.formState.errors.searches && (
-            <p className="text-sm text-destructive">
-              {form.formState.errors.searches.message}
-            </p>
-          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

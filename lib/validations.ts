@@ -36,7 +36,6 @@ export const analyzeSchema = z.object({
     .min(1, "Select at least one platform"),
   time_window: z.enum(["day", "week", "month"]),
   max_posts_per_source: z.number().int().min(5).max(100),
-  searches: z.array(z.string().min(1)).min(1, "At least one search term required"),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;

@@ -10,7 +10,6 @@ export interface AnalyzeRequest {
   platforms: string[];
   time_window: "day" | "week" | "month";
   max_posts_per_source: number;
-  searches: string[];
 }
 
 export interface AnalyzeResponse {
